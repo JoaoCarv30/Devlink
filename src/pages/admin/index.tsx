@@ -1,6 +1,6 @@
 import { Header } from "../../components/header";
 import { Input } from "../../components/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { FiTrash } from "react-icons/fi";
 
@@ -14,8 +14,16 @@ import {
     doc,
     deleteDoc,
 } from "firebase/firestore"
+import { set } from "firebase/database";
 
+interface LinkProps {
+    id: string;
+    name: string;
+    url: string;
+    color: string;
+    bg: string;
 
+}
 
 export function Admin() {
 
@@ -23,6 +31,33 @@ export function Admin() {
     const [urlInput, setUrlInput] = useState('')
     const [textColorInput, setTextColorInput] = useState('#f1f1f1')
     const [backgroundColorInput, setBackgroundColorInput] = useState('#121212')
+    const [links, setLinks] = useState<LinkProps[]>([])
+
+        useEffect( () => {
+            const linksRef = collection(db, 'links')
+            const queryRef = query(linksRef, orderBy('createdAt', "asc"))
+
+            const unsub = onSnapshot(queryRef, (snapshot) => {
+              
+                    let lista = [] as LinkProps[];
+
+                    snapshot.forEach((doc) => {
+                        lista.push({
+                            id: doc.id,
+                            name: doc.data().name,
+                            url: doc.data().url,
+                            color: doc.data().color,
+                            bg: doc.data().bg,
+                        })
+                    })
+                    setLinks(lista)
+            })
+            return () =>{
+                unsub()
+            }
+
+        },[])
+
 
      function handleRegister(event: React.FormEvent) {
         event.preventDefault()
@@ -50,6 +85,10 @@ export function Admin() {
         })
     }
 
+    async function handleDeleteLink(id: string) {
+       const docRef = doc(db, 'links', id)
+       await deleteDoc(docRef)
+    }
 
     return (
         <div className="flex items-center flex-col min-h-screen pb-7 px-2">
@@ -112,16 +151,20 @@ export function Admin() {
             <h2 className="font-bold text-white mb-4 text-2xl">
                 Meus Links
             </h2>
-            
-            <article className="flex items-center justify-between w-11/12 max-w-xl rounded py-3 px-2 mb-2 select-none" 
-            style={{backgroundColor: "#2563eb", color:"#fff"}}>
-                <p> Canal do youtube</p>
-                <div>
-                    <button className="border border-dashed p-1 rounded">
-                         <FiTrash size={18} color="#fff"  /> 
-                    </button>
-                </div>
-            </article>
+
+                {links.map((link)=>(
+                        <article 
+                        key={link.id}
+                        className="flex items-center justify-between w-11/12 max-w-xl rounded py-3 px-2 mb-2 select-none" 
+                        style={{backgroundColor: link.bg, color: link.color}}>
+                            <p> {link.name}</p>
+                            <div>
+                                <button onClick={() => handleDeleteLink(link.id)} className="border border-dashed p-1 rounded">
+                                     <FiTrash size={18} color="#fff"  /> 
+                                </button>
+                            </div>
+                        </article>
+                ))}
         </div>
-    )
+)
 }
